@@ -2,7 +2,6 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { chatbotFlow } from '@/ai/flows/chatbot-flow';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -49,21 +48,30 @@ export function DynamicChatbot() {
 
   const handleSendMessage = async () => {
     if (!input.trim()) return;
+
     const userMessage: Message = { role: 'user', content: input };
-    setMessages((prev) => [...prev, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setInput('');
     setIsLoading(true);
 
     try {
-      const chatHistory = messages.map(msg => ({
+      const chatHistory = updatedMessages.map((msg) => ({
         role: msg.role,
-        content: [{ text: msg.content }]
+        content: [{ text: msg.content }],
       }));
 
-      const result = await chatbotFlow({
-        history: chatHistory,
-        message: input,
+      const response = await fetch('/api/chatbot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ history: chatHistory, message: input }),
       });
+
+      if (!response.ok) {
+        throw new Error(`Chatbot API error: ${response.statusText}`);
+      }
+
+      const result = await response.json();
 
       if (result.response) {
         setMessages((prev) => [...prev, { role: 'model', content: result.response }]);
