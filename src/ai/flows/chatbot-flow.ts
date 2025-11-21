@@ -5,7 +5,7 @@
  * - chatbotFlow - A function that handles user queries about the platform.
  */
 
-import { ai } from '@/ai/genkit';
+import { ai, aiProviderReady } from '@/ai/genkit';
 import { z } from 'genkit';
 
 const ChatbotInputSchema = z.object({
@@ -66,6 +66,13 @@ export const chatbotFlow = ai.defineFlow(
   },
   async (input) => {
     const { history, message } = input;
+
+    if (!aiProviderReady) {
+      return {
+        response:
+          'I am ready to chat once the LISTED team finishes setting up my AI access. In the meantime, feel free to explore the platform or reach out for help!',
+      };
+    }
 
     try {
       // Call the pre-defined prompt object with the input; the prompt

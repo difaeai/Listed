@@ -1,13 +1,18 @@
 
-import {genkit} from 'genkit';
-import {googleAI} from '@genkit-ai/googleai';
+import { googleAI } from '@genkit-ai/googleai';
+import { genkit } from 'genkit';
 
-// Ensure you have GOOGLE_API_KEY set in your environment
-// or configure the API key directly if needed.
-// Example:
-// plugins: [googleAI({apiKey: "YOUR_GOOGLE_API_KEY"})],
+const googleApiKey = process.env.GOOGLE_API_KEY;
+
+/**
+ * Whether the AI provider is configured and ready to serve requests.
+ *
+ * If this is false, the chatbot flow will gracefully fall back to a
+ * predefined response instead of throwing an error for missing config.
+ */
+export const aiProviderReady = Boolean(googleApiKey);
 
 export const ai = genkit({
-  plugins: [googleAI()],
-  model: 'googleai/gemini-1.5-flash-latest', // Default model
+  plugins: googleApiKey ? [googleAI({ apiKey: googleApiKey })] : [],
+  model: googleApiKey ? 'googleai/gemini-1.5-flash-latest' : undefined,
 });
