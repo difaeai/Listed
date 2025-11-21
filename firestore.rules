@@ -1,0 +1,163 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =================================
+    // Helper Functions
+    // =================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function getUserData(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && getUserData(request.auth.uid).type == 'admin';
+    }
+
+    // =================================
+    // Users Collection
+    // =================================
+    match /users/{userId} {
+      // Any authenticated user can view any user's profile data.
+      allow get: if isAuthenticated();
+      // Any authenticated user can list users (for find investor/partner pages).
+      allow list: if isAuthenticated();
+      // A user can only create their own document upon signup.
+      allow create: if isOwner(userId);
+      // A user can update their own document, or an admin can update any user.
+      allow update: if isOwner(userId) || isAdmin();
+      // Only admins can delete user documents.
+      allow delete: if isAdmin();
+
+      // Subscriptions are private to the user.
+      match /subscribedCorporationOffers/{offerId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /subscribedPeerOffers/{offerId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // =================================
+    // Funding Pitches Collection
+    // =================================
+    match /fundingPitches/{pitchId} {
+      // Any authenticated user can read a pitch. UI filters what's shown.
+      allow get, list: if isAuthenticated();
+
+      // A user must be authenticated, 'professional', and 'active' to create.
+      allow create: if isAuthenticated() && 
+                     getUserData(request.auth.uid).type == 'professional' &&
+                     request.resource.data.creatorId == request.auth.uid;
+      
+      // Only the pitch creator or an admin can update or delete.
+      allow update, delete: if isOwner(resource.data.creatorId) || isAdmin();
+
+      // Subcollections for engagement.
+      match /interests/{userId} {
+        allow create: if isOwner(userId);
+        allow read: if isAuthenticated(); // Allow reading to check for existing interest.
+        allow update, delete: if false;
+      }
+      match /viewers/{userId} {
+         allow create: if isOwner(userId);
+         allow read: if isAuthenticated();
+         allow update, delete: if false; 
+      }
+      match /feedback/{userId} {
+        allow create: if isOwner(userId);
+        allow read: if isOwner(userId) || isOwner(get(/databases/$(database)/documents/fundingPitches/$(pitchId)).data.creatorId);
+        allow update, delete: if false;
+      }
+    }
+
+    // =================================
+    // Direct Messages Collection
+    // =================================
+    match /directMessages/{messageId} {
+      // A message can be read only by participants of the conversation.
+      allow read: if isAuthenticated() && request.auth.uid in resource.data.participantIds;
+      // A message can only be created by the verified sender.
+      allow create: if isOwner(request.resource.data.senderId);
+      // Messages are immutable.
+      allow update, delete: if false;
+    }
+    
+    // =================================
+    // Platform & User Sales Offers
+    // =================================
+    match /platformOffers/{offerId} {
+      allow get, list: if isAuthenticated();
+      allow create: if isAuthenticated() && getUserData(request.auth.uid).type == 'company' && request.resource.data.corporationId == request.auth.uid;
+      allow update, delete: if isOwner(resource.data.corporationId) || isAdmin();
+      
+      match /feedback/{userId} {
+        allow create: if isOwner(userId);
+        allow read: if isAuthenticated();
+        allow update, delete: if false;
+      }
+    }
+    
+    match /userSalesOffers/{offerId} {
+      allow get, list: if isAuthenticated();
+      allow create: if isAuthenticated() && getUserData(request.auth.uid).type == 'professional' && request.resource.data.creatorId == request.auth.uid;
+      allow update, delete: if isOwner(resource.data.creatorId) || isAdmin();
+
+      match /peerInterests/{userId} {
+        allow create: if isOwner(userId);
+        allow read: if isAuthenticated();
+        allow update, delete: if false;
+      }
+      match /feedback/{userId} {
+        allow create: if isOwner(userId);
+        allow read: if isAuthenticated();
+        allow update, delete: if false;
+      }
+    }
+
+    // =================================
+    // Business Directory Collection
+    // =================================
+    match /businessDirectory/{entryId} {
+      // Any authenticated user can read published directory entries.
+      allow get, list: if isAuthenticated();
+      // Admins manage the directory content.
+      allow write: if isAdmin();
+    }
+    
+    // =================================
+    // Site Content Collection
+    // =================================
+    match /siteContent/{docId} {
+      // Publicly readable for signup options, etc.
+      allow get, list: if true;
+      // Admin-only write access.
+      allow write: if isAdmin();
+    }
+    
+    // =================================
+    // Complaints & Inquiries
+    // =================================
+    match /complaints/{complaintId} {
+      allow create: if isOwner(request.resource.data.complainantUid);
+      allow read: if isOwner(resource.data.complainantUid) || isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    match /inquiries/{inquiryId} {
+      // Anyone can submit from contact form.
+      allow create: if true;
+      // Only admins can manage inquiries.
+      allow read, write: if isAdmin();
+    }
+  }
+}
