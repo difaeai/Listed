@@ -1,14 +1,11 @@
 
 // NO "use client" here
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
 import './globals.css';
 // Toaster is now rendered inside AppContentClient
 import { AuthProvider } from '@/contexts/AuthContext';
 import { AppContentClient } from './app-content-client'; // Import the new client component
 import { DynamicChatbot } from '@/components/common/dynamic-chatbot';
-
-const inter = Inter({ subsets: ['latin'] });
 
 const siteConfig = {
   name: 'LISTED',
@@ -96,7 +93,7 @@ export default function RootLayout({
   console.log("[RootLayout] Rendering with AuthProvider and AppContentClient wrapper.");
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className="font-sans">
         <AuthProvider>
           <AppContentClient>{children}</AppContentClient>
           <DynamicChatbot />
