@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview A conversational AI agent for the LISTED platform.
@@ -26,11 +25,21 @@ const ChatbotOutputSchema = z.object({
   response: z.string().describe("The AI model's response to the user message."),
 });
 
-// Define the prompt object separately. This follows the correct Genkit v1.x pattern.
-const chatbotPrompt = ai.definePrompt(
-  {
-    name: 'chatbotPrompt',
-    system: `You are a friendly and helpful AI assistant for a platform called LISTED.
+// Define the prompt object separately. This follows the Genkit v1.x pattern
+// and uses the `messages` builder instead of the deprecated `history` field.
+const chatbotPrompt = ai.definePrompt({
+  name: 'chatbotPrompt',
+  input: { schema: ChatbotInputSchema },
+  output: { schema: ChatbotOutputSchema },
+  messages: ({ history, message }) => {
+    const safeHistory = history?.map(({ role, content }) => ({ role, content })) ?? [];
+
+    return [
+      {
+        role: 'system',
+        content: [
+          {
+            text: `You are a friendly and helpful AI assistant for a platform called LISTED.
 LISTED connects startup founders in Pakistan with angel investors and institutional funds. It also provides a network for sales professionals.
 Your primary goal is to answer user questions about the platform, entrepreneurship, and funding in a concise, encouraging, and supportive manner.
 Keep your responses brief and to the point. Use markdown for formatting if it helps clarity.
@@ -41,10 +50,17 @@ Here are some key facts about LISTED:
 - Key features: Pitch creation, investor directory, sales offer listings, co-founder network.
 
 Engage in a friendly conversation.`,
-    output: { schema: ChatbotOutputSchema },
-  }
-);
-
+          },
+        ],
+      },
+      ...safeHistory,
+      {
+        role: 'user',
+        content: [{ text: message }],
+      },
+    ];
+  },
+});
 
 export const chatbotFlow = ai.defineFlow(
   {
@@ -56,18 +72,17 @@ export const chatbotFlow = ai.defineFlow(
     const { history, message } = input;
 
     try {
-        // CORRECT: Call the pre-defined prompt object with the input,
-        // and let the prompt handle the generate call internally.
-        const { output } = await chatbotPrompt({
-          prompt: message,
-          history: history,
-        });
-        
-        return output ?? { response: "I'm sorry, I'm having trouble thinking right now. Please try again." };
+      // Call the pre-defined prompt object with the input; the prompt
+      // handles the generate call internally.
+      const { output } = await chatbotPrompt({
+        message,
+        history,
+      });
 
+      return output ?? { response: "I'm sorry, I'm having trouble thinking right now. Please try again." };
     } catch (error) {
-        console.error("[Chatbot Flow Error]", error);
-        return { response: "I'm sorry, but I'm unable to connect to the AI service right now. Please try again in a few moments." };
+      console.error('[Chatbot Flow Error]', error);
+      return { response: "I'm sorry, but I'm unable to connect to the AI service right now. Please try again in a few moments." };
     }
   }
 );
