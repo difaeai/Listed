@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { chatbotFlow } from '@/ai/flows/chatbot-flow';
+import { aiProviderReady } from '@/ai/genkit';
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,7 +13,7 @@ export async function POST(req: NextRequest) {
 
     const result = await chatbotFlow({ history, message });
 
-    return NextResponse.json({ response: result.response });
+    return NextResponse.json({ response: result.response, aiProviderReady });
   } catch (error) {
     console.error('[Chatbot API Error]', error);
     return NextResponse.json(
@@ -20,4 +21,8 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+export async function GET() {
+  return NextResponse.json({ aiProviderReady });
 }

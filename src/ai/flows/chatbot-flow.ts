@@ -58,6 +58,36 @@ Engage in a friendly conversation.`,
   ],
 });
 
+function generateOfflineResponse(message: string) {
+  const normalized = message.toLowerCase();
+
+  if (normalized.match(/^(hi|hello|hey)\b/)) {
+    return 'Hi there! I\'m the LISTED assistant. Tell me about your startup, fundraising plans, or sales goals and I\'ll share quick guidance.';
+  }
+
+  if (normalized.includes('fund') || normalized.includes('invest')) {
+    return 'LISTED helps Pakistani founders prepare investor-ready pitches and connect with angels and funds. Share your stage and traction so I can suggest next steps.';
+  }
+
+  if (normalized.includes('sales') || normalized.includes('seller') || normalized.includes('deal')) {
+    return 'You can list sales offers, connect with sales talent, and showcase deals on LISTED. Let me know your sector and target customers to tailor suggestions.';
+  }
+
+  if (normalized.includes('co-founder') || normalized.includes('cofounder') || normalized.includes('founder')) {
+    return 'Looking for a co-founder? LISTED hosts a network of founders and operators. Describe the skills you need and I can outline how to set up a compelling profile.';
+  }
+
+  if (normalized.includes('price') || normalized.includes('cost') || normalized.includes('plan')) {
+    return 'You can start by creating a free profile and explore investor and sales directories. For premium visibility and outreach tools, the team can share current pricing when you message support.';
+  }
+
+  if (normalized.includes('contact') || normalized.includes('help') || normalized.includes('support')) {
+    return 'You can reach the LISTED team directly from the help section or via support@listed.ai. In the meantime, tell me what you need and I\'ll point you to the right feature.';
+  }
+
+  return 'Happy to help! Ask me about funding, investors, sales outreach, or using LISTED and I\'ll share quick, actionable guidance.';
+}
+
 export const chatbotFlow = ai.defineFlow(
   {
     name: 'chatbotFlow',
@@ -68,10 +98,7 @@ export const chatbotFlow = ai.defineFlow(
     const { history, message } = input;
 
     if (!aiProviderReady) {
-      return {
-        response:
-          'I am ready to chat once the LISTED team finishes setting up my AI access. In the meantime, feel free to explore the platform or reach out for help!',
-      };
+      return { response: generateOfflineResponse(message) };
     }
 
     try {
