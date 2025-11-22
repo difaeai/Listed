@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 import { X, Send, Bot, User, Loader2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { marked } from 'marked';
@@ -24,6 +25,7 @@ export function DynamicChatbot() {
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { currentUser } = useAuth();
+  const [providerReady, setProviderReady] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (isOpen && messages.length === 0) {
@@ -35,7 +37,26 @@ export function DynamicChatbot() {
       ]);
     }
   }, [isOpen, messages.length]);
-  
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const checkProvider = async () => {
+      try {
+        const response = await fetch('/api/chatbot');
+        if (!response.ok) return;
+
+        const result = await response.json();
+        if (typeof result.aiProviderReady === 'boolean') {
+          setProviderReady(result.aiProviderReady);
+        }
+      } catch (error) {
+        console.error('Error checking chatbot provider readiness:', error);
+      }
+    };
+
+    checkProvider();
+  }, [isOpen]);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -73,6 +94,10 @@ export function DynamicChatbot() {
 
       const result = await response.json();
 
+      if (typeof result.aiProviderReady === 'boolean') {
+        setProviderReady(result.aiProviderReady);
+      }
+
       if (result.response) {
         setMessages((prev) => [...prev, { role: 'model', content: result.response }]);
       }
@@ -107,6 +132,11 @@ export function DynamicChatbot() {
                   <Bot className="h-6 w-6 text-primary animate-eye-blink" />
                   <CardTitle className="text-lg">LISTED AI Assistant</CardTitle>
                 </div>
+                <Badge variant={providerReady === false ? 'outline' : 'secondary'} className="text-[11px] font-medium">
+                  {providerReady === null && 'Checking...'}
+                  {providerReady === true && 'Live AI'}
+                  {providerReady === false && 'Quick tips mode'}
+                </Badge>
                 <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}>
                   <X className="h-5 w-5" />
                 </Button>
@@ -114,6 +144,12 @@ export function DynamicChatbot() {
               <CardContent className="p-0 flex-1 overflow-hidden">
                 <ScrollArea className="h-full" ref={scrollAreaRef}>
                   <div className="p-4 space-y-4">
+                    {providerReady === false && (
+                      <div className="text-xs text-muted-foreground bg-muted/60 border border-muted rounded-lg px-3 py-2">
+                        Full AI answers are disabled because no API key is configured. I'm sharing quick, built-in guidance
+                        for now.
+                      </div>
+                    )}
                     {messages.map((msg, index) => (
                       <div
                         key={index}
@@ -144,14 +180,14 @@ export function DynamicChatbot() {
                       </div>
                     ))}
                     {isLoading && (
-                        <div className="flex items-start gap-3">
-                             <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
-                                <Bot className="h-5 w-5" />
-                            </div>
-                            <div className="max-w-[80%] rounded-2xl px-4 py-2 bg-muted rounded-bl-none flex items-center">
-                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                            </div>
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+                          <Bot className="h-5 w-5" />
                         </div>
+                        <div className="max-w-[80%] rounded-2xl px-4 py-2 bg-muted rounded-bl-none flex items-center">
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        </div>
+                      </div>
                     )}
                   </div>
                 </ScrollArea>

@@ -2,7 +2,13 @@
 import { googleAI } from '@genkit-ai/googleai';
 import { genkit } from 'genkit';
 
-const googleApiKey = process.env.GOOGLE_API_KEY;
+// Try multiple environment variable names so the chatbot works whether the
+// key is provided as a server-only or public variable in hosting platforms.
+const googleApiKey =
+  process.env.GOOGLE_API_KEY ??
+  process.env.NEXT_PUBLIC_GOOGLE_API_KEY ??
+  process.env.GENKIT_GOOGLE_API_KEY ??
+  process.env.NEXT_PUBLIC_GENKIT_GOOGLE_API_KEY;
 
 /**
  * Whether the AI provider is configured and ready to serve requests.
